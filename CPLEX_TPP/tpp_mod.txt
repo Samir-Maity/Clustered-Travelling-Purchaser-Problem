@@ -1,0 +1,60 @@
+
+           
+int m = ...; // Number of Markets
+
+int n = ...; // Number of Products
+
+int vr = ...; // Number of Vehicles
+
+float c[1..m][1..m][1..vr] = ...; // Cost Matrix
+
+dvar boolean x[1..m][1..m][1..vr]; // Decision Variable
+
+dvar boolean y[1..m];
+
+float p[1..m][1..n] = ...; // Product Price Matrix
+
+int q[1..m][1..n] = ...; // Product Availibility Matrix
+
+dvar int z[1..m][1..n];
+
+int d[1..n] = ...; // Product Demand
+
+range nodes = 1 .. m;
+range products = 1 .. n;
+dvar float+ u[nodes];
+
+float r;
+float ld = 0;
+ 
+
+dexpr float TotalRcost = sum (i,j in 1..m, l in 1..vr) c[i][j][l] * x[i][j][l];
+
+dexpr float TotalPcost = sum (i,j in 1..m, k in 1..n, l in 1..vr) p[i][k] * z[i][k] * x[i][j][l];
+
+minimize TotalRcost + TotalPcost;
+
+
+subject to { // Constraints
+  
+  forall (i in 1..m, l in 1..vr) x[i][i][l] == 0; 
+  forall (k in 1..n) sum (i in 1..m) z[i][k] == d[k];
+
+  forall (i in 1..m, k in 1..n) z[i][k] <= q[i][k] * y[i];
+
+  forall (i in 1..m) sum (j in 1..m,l in 1..vr: i != j) x[i][j][l] == y[i];
+ 
+  forall (j in 1..m) sum (i in 1..m, l in 1..vr: i != j) x[i][j][l] == y[j];
+
+  sum (i in 1..m,l in 1..vr) x[i][1][l] == 1;
+  
+  sum (j in 1..m,l in 1..vr) x[1][j][l] == 1;
+  
+
+  forall (i in 1..m, k in 1..n) z[i][k] >= 0 ;
+  
+  
+  //rule_no_subtour:
+    forall (i, j in nodes, l in 1..vr : j != 1) u[i] + x[i][j][l] <= u[j] + (m - 1) * (1 - x[i][j][l]);
+
+}
