@@ -1,4 +1,4 @@
-##### GA_TSP with COMPARISON CROSSOVER & PROBABILISTIC Selection
+##### MVClu_TPP by k-menas-VLCGA 
 import sys
 import seed
 import random
