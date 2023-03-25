@@ -1,4 +1,4 @@
- n = 3;   // Number of Products
+ n = 1;   // Number of Products
  m = 8;  // Number of Markets
  vr = 3;  // Number of Vehicles
 
