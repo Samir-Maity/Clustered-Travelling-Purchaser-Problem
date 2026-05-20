@@ -1084,3 +1084,223 @@ df = pd.DataFrame(dist_matrix, index=labels, columns=labels)
 
 # Save to your given path
 df.to_csv(r"C:\Users.csv", float_format="%.2f")
+
+######################case study##########
+import folium
+import numpy as np
+import requests
+
+# =====================================================
+# 1. MARKETS
+# =====================================================
+markets = {
+    "Auchan": (51.96377, 15.49019),
+    "Leroy Merlin": (51.96568,15.48796),
+    "Intermarche Zielona Góra Batorego": (51.96049, 15.49757),
+    "Zielonogórski Rynek Rolno - Towarowy S.A": (51.95425, 15.48933),
+    "Bricomarche": (51.96089, 15.49801),
+    "Action Zielona Góra": (51.95620,15.48727),
+    "Galeria Zielona": (51.94987,15.49547),
+    "Kaufland Zielona Góra-Os. Batorego": (51.94966, 15.49492),
+     "Netto":(51.94366, 15.47903),
+     "Ukraїnoczka":(51.93991, 15.48130),
+     "Delikatesy Centrum": (51.93827, 15.47598),
+     "Biedronka": (51.94245, 15.49195),
+     "Castorama": (51.94087, 15.49486),
+     "Carrefour": (51.93790, 15.49495),
+     "E. Leclerc": (51.93007,15.49023),
+     "Sklep ogólnospożywczy Monte": (51.93155, 15.48705),
+     "Na Górce. Sklep spożywczy U Lidzi": (51.92547, 15.50757),
+     "Action Zielona Góra": (51.93616, 15.51652),
+     "Kaufland Zielona Góra-Os. Branibors":(51.93701,  15.51652),
+     "Focus Mall Zielona Góra":(51.93572, 15.51131),
+     "Carrefour Market":(51.93613,15.51095),
+     "Lidl": (51.95825,15.51897),
+     "Dino": (51.95318, 15.52166),
+     "MAKRO Cash&Carry Polska S.A. Zielona Góra": (51.9590, 15.5343),
+     "LEWIATAN market": (51.9638, 15.5300),
+      "Intermarche Zielona Góra Batorego":(51.96164, 15.49740),
+}
+
+#markets = {
+  #  "Auchan": (51.9688, 15.4894),
+    #"Carrefour_Wroclawska": (51.9361, 15.5130),
+   # "Carrefour_Market": (51.9375, 15.5200),
+   # "Kaufland_Centrum": (51.9400, 15.5050),
+   # "E_Leclerc": (51.9355, 15.4950),
+   # "Lidl_1": (51.9320, 15.5100),
+   # "Lidl_2": (51.9450, 15.5300),
+   # "Biedronka_1": (51.9380, 15.5250),
+   # "Biedronka_2": (51.9420, 15.5000),
+   # "Biedronka_3": (51.9300, 15.4900),
+   # "Netto_1": (51.9350, 15.5150),
+    #"Netto_2": (51.9480, 15.5080),
+   # "Braniborska_Market": (51.9390, 15.4980),
+   # "City_Center_Shop1": (51.9365, 15.5020),
+   # "City_Center_Shop2": (51.9370, 15.5070),
+   # "Market_North": (51.9500, 15.5100),
+   # "Market_South": (51.9250, 15.5000),
+   # "Market_East": (51.9400, 15.5400),
+   # "Market_West": (51.9350, 15.4800),
+   # "Retail_Park_1": (51.9455, 15.4955),
+   # "Retail_Park_2": (51.9470, 15.5200),
+   # "Retail_Park_3": (51.9305, 15.5180),
+   # "Slep_ogolnospozywczy": (51.9410, 15.5120),
+   # "Bricomarche": (51.9440, 15.5000),
+#}
+
+# =====================================================
+# 2. CLUSTERS
+# =====================================================
+
+#clusters = {
+ #   "C1": ["Bricomarche"],
+  #  "C2": ["Auchan", "Kaufland_Centrum"],
+   # "C3": ["E_Leclerc"],
+   # "C4": ["Carrefour_Wroclawska", "Carrefour_Market"],
+   # "C5": ["Lidl_1", "Lidl_2"],
+   # "C6": ["Biedronka_1", "Biedronka_2", "Biedronka_3"],
+    #"C7": ["Netto_1", "Netto_2"],
+   # "C8": ["City_Center_Shop1", "City_Center_Shop2"],
+   # "C9": ["Market_North"],
+   # "C10": ["Market_South"],
+   # "C11": ["Retail_Park_1", "Retail_Park_2", "Retail_Park_3"],
+#}
+clusters = {
+    "C1": ["Leroy Merlin", "Auchan"],
+    "C2": ["Intermarche Zielona Góra Batorego", "Bricomarche"],
+    "C3": ["Bricomarche","Action Zielona Góra"],
+    "C4": ["Galeria Zielona", "Kaufland Zielona Góra-Os. Batorego"],
+    "C5": ["Netto", "Ukraїnoczka", "Delikatesy Centrum"],
+    "C6": ["Biedronka", "Castorama", "Carrefour"],
+    "C7": ["E. Leclerc", "Sklep ogólnospożywczy Monte"],
+    "C8": ["Na Górce. Sklep spożywczy U Lidzi"],
+    "C9": ["Action Zielona Góra","Kaufland Zielona Góra-Os. Branibors", "Focus Mall Zielona Góra", "Carrefour Market" ],
+    "C10": ["Lidl", "Dino"],
+    "C11": ["Intermarche Zielona Góra Batorego"],
+}
+
+# =====================================================
+# 3. SELECT REPRESENTATIVES
+# =====================================================
+
+selected = []
+for c, nodes in clusters.items():
+    pts = np.array([markets[n] for n in nodes])
+    center = pts.mean(axis=0)
+    d = np.linalg.norm(pts - center, axis=1)
+    selected.append(nodes[np.argmin(d)])
+
+# =====================================================
+# 4. REAL ROUTE FUNCTION (OSRM)
+# =====================================================
+
+def get_route(a, b):
+    url = f"http://router.project-osrm.org/route/v1/driving/{a[1]},{a[0]};{b[1]},{b[0]}?overview=full&geometries=geojson"
+    r = requests.get(url).json()
+    coords = r["routes"][0]["geometry"]["coordinates"]
+    return [(c[1], c[0]) for c in coords]  # lat, lon
+
+# =====================================================
+# 5. MAP
+# =====================================================
+
+m = folium.Map(location=[51.94, 15.51], zoom_start=13)
+
+colors = ["red", "blue", "green", "purple", "orange",
+          "darkred", "cadetblue", "pink", "gray", "black"]
+
+# =====================================================
+# 6. CLUSTERS (CIRCLES)
+# =====================================================
+
+for i, (c, nodes) in enumerate(clusters.items()):
+    color = colors[i % len(colors)]
+
+    pts = np.array([markets[n] for n in nodes])
+    center = pts.mean(axis=0)
+
+    folium.CircleMarker(
+        location=center,
+        radius=8,
+        color=color,
+        fill=True,
+        fill_opacity=0.9,
+        popup=c
+    ).add_to(m)
+
+    for n in nodes:
+        folium.CircleMarker(
+            location=markets[n],
+            radius=5,
+            color=color,
+            fill=True,
+            fill_opacity=0.7,
+            popup=n
+        ).add_to(m)
+
+# =====================================================
+# 7. ALL MARKETS
+# =====================================================
+
+for n, coord in markets.items():
+    folium.CircleMarker(
+        location=coord,
+        radius=2,
+        color="gray",
+        fill=True,
+        fill_opacity=0.4
+    ).add_to(m)
+
+# =====================================================
+# 8. SELECTED MARKETS
+# =====================================================
+
+for n in selected:
+    folium.CircleMarker(
+        location=markets[n],
+        radius=7,
+        color="black",
+        fill=True,
+        fill_opacity=1,
+        popup=f"SELECTED: {n}"
+    ).add_to(m)
+
+# =====================================================
+# 9. ROUTES (REAL ROADS)
+# =====================================================
+
+route_cost = selected + [selected[0]]
+route_time = selected[::-1] + [selected[0]]
+route_joint = selected[::2] + [selected[0]]
+
+def draw_route(route, color):
+    for i in range(len(route)-1):
+        a = markets[route[i]]
+        b = markets[route[i+1]]
+        line = get_route(a, b)
+
+        folium.PolyLine(
+            line,
+            color=color,
+            weight=4,
+            opacity=0.8
+        ).add_to(m)
+
+draw_route(route_cost, "red")
+draw_route(route_time, "blue")
+draw_route(route_joint, "green")
+
+# =====================================================
+# 10. SAVE
+# =====================================================
+
+m.save("final_real_route_map_cost_time1.html")
+output_path = r"C:\Users.html"
+
+m.save(output_path)
+
+print("Map saved to:")
+print(output_path)
+m
+##############################
