@@ -1,1 +1,152 @@
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import re
 
+
+# =====================================================
+# FOLDER
+# =====================================================
+
+folder = r"C:\Users..
+import os
+
+# ---------------------------------------------------
+# Save path
+# ---------------------------------------------------
+save_path = r"C:\Users"
+
+os.makedirs(save_path, exist_ok=True)
+
+# =====================================================
+# PARSE FUNCTION
+# =====================================================
+
+def parse_pf(path):
+
+    with open(path, "r") as f:
+        text = f.read()
+
+    nums = re.findall(r"[-+]?\d*\.\d+|\d+", text)
+    nums = list(map(float, nums))
+
+    return np.array(nums).reshape(-1, 2)
+
+
+# =====================================================
+# LOAD DATA
+# =====================================================
+
+files = [f for f in os.listdir(folder)
+         if f.startswith("myPF_")]
+
+data = {}
+
+for file in files:
+
+    demand = int(re.findall(r"\d+", file)[0])
+
+    path = os.path.join(folder, file)
+
+    pf = parse_pf(path)
+
+    data[demand] = pf
+
+
+# =====================================================
+# SORT DEMANDS
+# =====================================================
+
+demands = sorted(data.keys())
+
+
+# =====================================================
+# PREPARE DATA
+# =====================================================
+
+cost_data = []
+time_data = []
+
+for d in demands:
+
+    pf = data[d]
+
+    cost_data.append(pf[:, 0])
+    time_data.append(pf[:, 1])
+
+
+# =====================================================
+# SINGLE COMBINED PLOT
+# =====================================================
+
+fig, ax1 = plt.subplots(figsize=(14, 7))
+
+
+# -----------------------------------------------------
+# COST (LEFT AXIS)
+# -----------------------------------------------------
+
+bp1 = ax1.boxplot(
+    cost_data,
+    positions=np.arange(len(demands))*2.0 - 0.3,
+    widths=0.5,
+    patch_artist=True
+)
+
+for box in bp1['boxes']:
+    box.set(facecolor='skyblue')
+
+ax1.set_ylabel("Transportation Cost", color='blue')
+ax1.tick_params(axis='y', labelcolor='blue')
+
+
+# -----------------------------------------------------
+# TIME (RIGHT AXIS)
+# -----------------------------------------------------
+
+ax2 = ax1.twinx()
+
+bp2 = ax2.boxplot(
+    time_data,
+    positions=np.arange(len(demands))*2.0 + 0.3,
+    widths=0.5,
+    patch_artist=True
+)
+
+for box in bp2['boxes']:
+    box.set(facecolor='lightcoral')
+
+ax2.set_ylabel("Purchasing Time (seconds)", color='red')
+ax2.tick_params(axis='y', labelcolor='red')
+
+
+# -----------------------------------------------------
+# X AXIS
+# -----------------------------------------------------
+
+ax1.set_xticks(np.arange(len(demands))*2.0)
+ax1.set_xticklabels(demands)
+
+ax1.set_xlabel("Demand (units)")
+
+
+# -----------------------------------------------------
+# TITLE
+# -----------------------------------------------------
+
+#plt.title(
+   # "Cost and Delivery Time Distribution under Demand Changes"
+#)
+
+ax1.grid(True)
+
+plt.tight_layout()
+plt.savefig(
+    os.path.join(
+        save_path,
+        "Demand_Cost_Time_Distribution.png"
+    ),
+    dpi=600,
+    bbox_inches="tight"
+)
+plt.show()
