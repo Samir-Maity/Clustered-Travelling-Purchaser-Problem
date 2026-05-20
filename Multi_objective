@@ -1,3 +1,888 @@
+###################### Q_MOEAD_code for TPP
+
+import numpy as np
+import random
+import math
+import tsplib95
+import networkx
+import matplotlib.pyplot as plt
+import random
+from copy import deepcopy
+import copy
+from termcolor import colored
+from itertools import chain
+cl = int(input("\n How many Clusters want to create? "))
+
+# Constants
+MAX_IT =5
+NN = 0
+NPP=29
+NS = 20
+all_cost=0
+all_cost1=99999
+cl_loop=1
+gl_loop=1
+NUM_NEIGHBORS=15
+NUM_OBJECTIVES = 2
+MUTATION_RATE = 0.1
+# Initialize three empty lists for storing the data
+z = []  # This will store the first column (index)
+x = []   # This will store the second column (first float)
+y = []   # This will store the third column (second float)
+mz = []  # This will store the first column (index)ermcolo
+mx = []   # This will store the second column (first float)
+my = []
+solutions=[]
+pro_cost_pc=[]   # perches cost of each cluster
+av_pro_pc=[]      # available product of each cluster
+dem=0.0
+pareto_front = []
+NDPF=[]
+solutions1=[]
+solutions2=[]
+
+## read 1 file
+with open('bays29.txt','r') as file:
+    for line in file:
+        elements =line.strip().split()
+        z.append(int(elements[0]))
+        x.append(float(elements[1]))
+        y.append(float(elements[2]))
+        
+        
+        
+  ## read 2 file
+with open('bays29_1.txt','r') as file:
+    for line in file:
+        elements =line.strip().split()
+        mz.append(int(elements[0]))
+        mx.append(float(elements[1]))
+        my.append(float(elements[2]))
+        
+
+# Define the node class
+class Node:
+    def __init__(self):
+        self.s = []  # Use a list instead of a NumPy array
+        self.lenth = 0
+        self.cx = 0
+        self.cy = 0
+        self.eqdis = []
+        self.av_pro=0
+        self.demand=0
+        self.path=[]
+        self.path_length=0
+        self.path_cost=0.0
+        
+
+# Create an array of Node objects
+cluster= [Node() for _ in range(cl)]
+gb_cl= [Node() for _ in range(cl)]
+obj= [Node() for _ in range(cl)]
+p= [Node() for _ in range(cl)]
+#swapsequence class
+class SwapSequence:
+    def __init__(self, n=0):
+        self.n = n
+        self.ss = [[0, 0] for _ in range(1000)]  # Initialize a 2D list for swaps
+
+class Path:
+    def __init__(self):
+        self.x = [0] * NPP
+        self.cost =[0]*2
+        self.age = 0
+class PF:
+    def __init__(self):
+        self.NDPF=[]
+
+        
+v = [SwapSequence() for _ in range(NS)]
+p = [Path() for _ in range(NS)]
+pb = [Path() for _ in range(NS)]  # Personal best paths
+best = [Path() for _ in range(1)] # Global best path
+global_best = [Path() for _ in range(1)] # Global best path
+c = [[0.0 for _ in range(NPP)] for _ in range(NPP)]  # Cost matrix
+cc = [[0.0 for _ in range(NPP)] for _ in range(NPP)]  # Cost matrix
+path3 = [Path()]
+path4=[Path()]
+TPF=PF()
+def ran(a, b):
+    return a + (b - a) * random.random()
+
+# Function to calculate Euclidean distance
+def equ_dis(p, q, w, z):
+    val1 = math.pow((w - p), 2)
+    val2 = math.pow((z - q), 2)
+    return math.sqrt(val1 + val2)
+
+# K-means algorithm
+
+def k_means():
+    
+    v = 0  # This will control the while loop
+    
+    # Initialize nod array
+    for i in range(0, len(z)):
+        nod[i] = i
+    
+    while v != 1:  # Loop until centroids stop updating
+        # Clear the cluster assignments at the start of each iteration
+        for j in range(0, cl):
+            cluster[j].s.clear()  # Clear the list to remove previous assignments
+            cluster[j].lenth = 0  # Reset the length attribute
+        
+        # Assign points to the nearest cluster
+        for i in range(0, len(z)):
+            min_dist = 99999
+            pos = -1
+            for j in range(0, cl):
+                # Compute the distance between point i and cluster j's centroid
+                value = equ_dis(x[nod[i]], y[nod[i]], cluster[j].cx, cluster[j].cy)
+                if value < min_dist:
+                    min_dist = value
+                    pos = j
+            
+            # Append the point to the closest cluster's list
+            cluster[pos].s.append(nod[i])
+            
+            cluster[pos].lenth += 1
+        
+        # Compute new centroids
+        convergence = True  # Assume centroids converge unless proven otherwise
+        
+        for j in range(0, cl):
+            s1 = 0
+            s2 = 0
+            for k in range(0, cluster[j].lenth):
+                s1 += x[cluster[j].s[k]]
+                s2 += y[cluster[j].s[k]]
+            
+            if cluster[j].lenth > 0:
+                new_cx = s1 / cluster[j].lenth
+                new_cy = s2 / cluster[j].lenth
+                
+                # Check if the centroids have changed
+                if cluster[j].cx != new_cx or cluster[j].cy != new_cy:
+                    convergence = False  # Centroids are still changing
+                
+                # Update the centroid values
+                cluster[j].cx = new_cx
+                cluster[j].cy = new_cy
+        
+        # If centroids have converged, stop the loop
+        if convergence:
+            v = 1  # Exit the loop since centroids have stabilized
+  ##END of K-Mean algorithm ################
+  
+
+def plt_cluster():
+    #cluster = gb_cl
+   # best[0] = global_best[0]
+    text = range(len(z))
+    text1 = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10"]
+    
+    # Plot the initial points with annotations
+    for i1 in range(len(z)):
+        x1, y1 = x[i1], y[i1]
+        plt.annotate(text[i1], (x1, y1 + 0.8))
+        plt.scatter(x1, y1, color="green", marker="*", s=50)
+    plt.show()
+
+    col = ["cyan", "green", "blue", "yellow", "black", "orange", "magenta", "purple", "brown", "pink"]
+
+    # Loop through each cluster
+    for i in range(0, cl):
+        lx1 = []  # List for storing x-coordinates for plotting
+        ly1 = []  # List for storing y-coordinates for plotting
+        tem8 = cluster[i].s.copy()  # Create a copy of the current cluster's elements
+
+        # Calculate equidistant values from the first element (tem_p) to all others
+        tem_p = cluster[i].s[0]
+        eqdis_values = []
+        for j in range(1, cluster[i].lenth):
+            pp = cluster[i].s[j]
+            eq_dis_val = equ_dis(x[tem_p], y[tem_p], x[pp], y[pp])
+            eqdis_values.append((pp, eq_dis_val))
+
+        # Sort the elements based on their equidistant values
+        eqdis_values.sort(key=lambda x: x[1])  # Sort by equidistance
+
+        # Create a new sorted list by keeping the first element (tem_p) at the start
+        sorted_cluster = [tem_p] + [item[0] for item in eqdis_values]
+
+        # Update the cluster with the sorted elements
+        cluster[i].s = sorted_cluster
+
+        # Plot the sorted path for this cluster
+        for p in cluster[i].s:
+            lx1.append(x[p])
+            ly1.append(y[p])
+        plt.plot(lx1, ly1, linestyle='dotted', marker='*', color=col[i])
+    for i1 in range(len(z)):
+        x1, y1 = x[i1], y[i1]
+        plt.annotate(text[i1], (x1, y1 + 0.8))
+    # Plot the cluster centroids
+    for i in range(cl):
+        xz, yz = cluster[i].cx, cluster[i].cy
+        plt.scatter(xz, yz, label="center", color="red", marker="o", s=50)
+        plt.annotate(text1[i], (xz, yz + 0.5))
+
+    # Show the plot
+    plt.show()
+   
+    
+    for i in range(cl):
+        lx11=[]
+        ly11=[]
+        
+        for j in range(cluster[i].path_length):
+            p = cluster[i].path[j]
+            lx11.append(x[p])
+            ly11.append(y[p])
+            #plt.annotate(text[j], (lx11, ly11 + 0.8))
+            
+        #print(f"p is {cluster[i].path[j]}")
+        
+        plt.plot(lx11, ly11, linestyle='dotted', marker='*', color=col[i])
+    for i1 in range(len(z)):
+        x1, y1 = x[i1], y[i1]
+        plt.annotate(text[i1], (x1, y1 + 0.8))
+    
+        
+            
+      
+    plt.show()
+
+    
+
+def plt_cluster_1():
+    cluster = gb_cl
+    best[0] = global_best[0]
+    text = range(len(z))
+    text1 = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10"]
+    
+    # Plot the initial points with annotations
+    for i1 in range(len(z)):
+        x1, y1 = x[i1], y[i1]
+        plt.annotate(text[i1], (x1, y1 + 0.8))
+        plt.scatter(x1, y1, color="green", marker="*", s=50)
+    plt.show()
+
+    col = ["cyan", "green", "blue", "yellow", "black", "orange", "magenta", "purple", "brown", "pink"]
+
+    # Loop through each cluster
+    for i in range(0, cl):
+        lx1 = []  # List for storing x-coordinates for plotting
+        ly1 = []  # List for storing y-coordinates for plotting
+        tem8 = cluster[i].s.copy()  # Create a copy of the current cluster's elements
+
+        # Calculate equidistant values from the first element (tem_p) to all others
+        tem_p = cluster[i].s[0]
+        eqdis_values = []
+        for j in range(1, cluster[i].lenth):
+            pp = cluster[i].s[j]
+            eq_dis_val = equ_dis(x[tem_p], y[tem_p], x[pp], y[pp])
+            eqdis_values.append((pp, eq_dis_val))
+
+        # Sort the elements based on their equidistant values
+        eqdis_values.sort(key=lambda x: x[1])  # Sort by equidistance
+
+        # Create a new sorted list by keeping the first element (tem_p) at the start
+        sorted_cluster = [tem_p] + [item[0] for item in eqdis_values]
+
+        # Update the cluster with the sorted elements
+        cluster[i].s = sorted_cluster
+
+        # Plot the sorted path for this cluster
+        for p in cluster[i].s:
+            lx1.append(x[p])
+            ly1.append(y[p])
+        plt.plot(lx1, ly1, linestyle='dotted', marker='*', color=col[i])
+    for i1 in range(len(z)):
+        x1, y1 = x[i1], y[i1]
+        plt.annotate(text[i1], (x1, y1 + 0.8))
+    # Plot the cluster centroids
+    for i in range(cl):
+        xz, yz = cluster[i].cx, cluster[i].cy
+        plt.scatter(xz, yz, label="center", color="red", marker="o", s=50)
+        plt.annotate(text1[i], (xz, yz + 0.5))
+
+    # Show the plot
+    plt.show()
+
+
+
+
+
+
+
+def plt_cluster_wise_path():
+    cluster = gb_cl
+    best[0] = global_best[0]
+    text = range(len(z))
+    col = ["cyan", "green", "blue", "yellow", "black", "orange", "magenta", "purple", "brown", "pink"]
+    
+    # Annotate each point in z
+    for i1 in range(len(z)):
+        x1, y1 = x[i1], y[i1]
+        plt.annotate(text[i1], (x1, y1 + 0.8))
+
+    # Plot each cluster's path
+    for i in range(cl):
+        lx1 = []
+        ly1 = []
+        path_length = min(cluster[i].path_length, len(cluster[i].path))  # Prevent index out of range
+        for jk in range(path_length):
+            p1 = cluster[i].path[jk]
+            lx1.append(x[p1])
+            ly1.append(y[p1])
+        plt.plot(lx1, ly1, linestyle='solid', marker='*', color=col[i])
+
+    plt.show()
+
+    # Annotate each point again (after showing plot)
+    for i in range(len(text)):
+        x1, y1 = x[i], y[i]
+        plt.annotate(text[i], (x1, y1 + 0.8))
+
+    lx11 = []
+    ly11 = []
+    tk = []
+    clk = 0
+
+    # Calculate total path length across all clusters
+    for i in range(cl):
+        clk += cluster[i].path_length
+    print("Path length is", clk)
+
+    # Extend the global best path to reconnect to the start
+    kp = deepcopy(best[0].x)
+    tk = deepcopy(best[0].x)
+    st = tk.pop(0)
+    kp.insert(clk, st)
+    clk += 1
+
+    # Plot the global best path
+    for j in range(clk):
+        p = kp[j]
+        lx11.append(x[p])
+        ly11.append(y[p])
+    plt.plot(lx11, ly11, linestyle='solid', color='green')
+    
+    plt.show()
+
+
+    
+def eqdist(x,y):
+    
+    num_points = len(x)
+    distance_matrix = np.zeros((num_points, num_points))
+
+    for i in range(num_points):
+        for j in range(num_points):
+            x1, y1 = x[i],y[i]
+            x2, y2 = x[j],y[j]
+            #print(f"x1 and y1 {x1,y1} and x2 and y2 {x2,y2}")
+        
+            distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+            distance_matrix[i, j] = round(distance)
+        #input("wait")
+    return distance_matrix
+
+
+def create1_path(k):
+    # Initialize p with elements of cluster[k].s, excluding 0
+    p = [x for x in cluster[k].s if x != 0]  # Make a copy, excluding 0
+    
+    # Shuffle p to ensure random, non-repeated selections
+    random.shuffle(p)
+    
+    # Initialize the total production capacity `s`
+    s = 0
+    
+    # Ensure there are elements to work with after excluding 0
+    if not p:
+        print("No valid elements to create path.")
+        return
+    
+    # Initialize the path and path length
+    cluster[k].path = []
+    cluster[k].path_length = 0
+
+    # Select nodes sequentially from the shuffled list until demand is met
+    for node in p:
+        # Add the node to the path
+        cluster[k].path.append(node)
+        cluster[k].path_length += 1
+        
+        # Update total production capacity `s`
+        s += av_pro_pc[node]
+        
+        # Stop if the demand is met
+        if s >= cluster[k].demand:
+            break
+    
+    # Sort the path based on the production cost (pro_cost_pc)
+    cluster[k].path.sort(key=lambda x: pro_cost_pc[x])
+
+    # Output the created and sorted path
+    #print("After creating and sorting path by cost:")
+    '''for j in range(cluster[k].path_length):
+        print(cluster[k].path[j], '\t', end="")
+    print()'''  # For a new line after the path
+
+#FUNCTION OF SWAP SEQUENCE 
+
+def initialize():
+    
+    
+   
+    for i in range(NS):
+        
+        create_path(i)
+        
+        #print(p[i].x)
+        #for j in range(NN):
+            #print(p[i].x[j],'\t',end="")
+        p[i].cost= cost(p[i].x)
+        #print(" cost is",p[i].cost)
+        #print("cost is",p[i].cost)
+        
+        pb[i] = deepcopy(p[i])  # Deepcopy to avoid reference issues
+        solutions.append(p[i].cost)
+    
+    #print(f" best cost is {best[0].x} and cost {best[0].cost}")
+def create_path(k):
+    path4 =deepcopy(path3) 
+    
+    
+    # Create a copy of path3 (assuming path3 is a list of Path objects)
+    
+    # Make a copy of the best path's x attribute
+   
+    # Select a random starting node from the path
+    pos = random.randint(0, NN - 1)
+    m = 0
+    p[k].x[m] = path4[pos]  # Directly assign, no append() needed
+    
+    
+    # Loop to create the rest of the path
+    while m < NN - 1:
+        
+        del path4[pos] # Remove the current node
+        
+        
+        # Find the closest node to the current node in p[k].x[m]
+        min_value = c[p[k].x[m]][path4[0]]
+        pos = 0
+        for i in range(1, len(path4)):
+            if c[p[k].x[m]][path4[i]] < min_value:
+                min_value = c[p[k].x[m]][path4[i]]
+                pos = i
+        
+        m += 1
+        p[k].x[m] = path4[pos]  # Direct assignment to p[k].x[m]
+        
+    
+    
+    
+    
+
+
+    
+def mutate_path(k):
+    it = 1000
+    while it > 0:
+        t = p[k]
+        n1 = random.randint(0, NN - 1)
+        n2 = random.randint(0, NN - 1)
+        t.x[n1], t.x[n2] = t.x[n2], t.x[n1]
+        t.cost = cost(t.x)
+        if t.cost < p[k].cost:
+            p[k] = t
+        it -= 1
+
+def cost(x):
+    return sum(c[x[i]][x[i + 1]] for i in range(NN - 1)) + c[x[NN - 1]][x[0]], sum(cc[x[i]][x[i + 1]] for i in range(NN - 1)) + cc[x[NN - 1]][x[0]]
+
+
+def result():
+    print("Final solution set:")
+
+    for i in range(NS):
+        for j in range(NN):
+            print(p[i].x[j],'\t',end="")
+        print(" cost is ",p[i].cost)
+       
+    print("Initial solutions are ",solutions )
+        
+   
+def final_result():
+   
+    print("global cluster\n")
+    for i in range(0, cl):
+         #print("length is ", cluster[i].lenth)
+         print(" \n elements are",'\t',"available",'\t',"cost for cluster",i)
+         for j in range(0, gb_cl[i].lenth):
+              print(gb_cl[i].s[j],'\t', av_pro_pc[gb_cl[i].s[j]],'\t', pro_cost_pc[gb_cl[i].s[j]])
+              #print("\nAfter creating and sorting path by cost:\n")
+              
+              #print(gb_cl[i].path[j], '\t', end="")
+              print() 
+    
+    print("\n global path\n")
+    print("global cost\n",global_best[0].cost)
+    print(global_best[0].x)
+    print("purchase cost is\n", all_cost1-global_best[0].cost)
+    print("prduction-cost+path-cost is\t", all_cost1)
+            
+def is_dominated(solution, other_solution):
+    """ Check if solution is dominated by other_solution """
+    return all(x <= y for x, y in zip(solution, other_solution)) and any(x < y for x, y in zip(solution, other_solution))
+
+def find_pareto_front(solutions):
+    pareto_front = []
+    for sol in solutions:
+        if not any(is_dominated(sol, other) for other in solutions if sol != other):
+            pareto_front.append(sol)
+    return pareto_front
+         
+def dominates(X,Y ):
+    
+    if len(Y[0]) == 2:
+        fx2, fy2 = Y[0]
+    else:
+        print("Y[0] does not contain exactly two elements. y is ",Y)
+    
+    fx1,fy1= X[0]
+    fx2,fy2= Y[0]
+   
+    return (fx1<=fx2 and fy1<fy2)  
+    
+def pf_plt():
+     NDPF1=[]
+     pareto_front = find_pareto_front(solutions)
+     NDPF1=list(set(pareto_front))
+     pareto_front = np.array(NDPF1)
+    # print("pf in graph",pareto_front)
+     lx=[]
+     ly=[]
+     lx=pareto_front[:,0]
+     ly=pareto_front[:,1]
+     plt.plot(lx, ly, linestyle='dotted', marker='*')
+     plt.show()
+          
+def pf_plt1():
+     
+     pareto_front1=[]
+     #pareto_front = find_pareto_front(solutions)
+     
+     
+     pareto_front1 = np.array(TPF.NDPF)
+    # print("pf in graph",pareto_front)
+     lx=[]
+     ly=[]
+     lx=pareto_front1[:,0]
+     ly=pareto_front1[:,1]
+     #plt.plot(lx, ly, linestyle='dotted', marker='*')
+     plt.scatter(lx, ly,)
+     plt.show()
+     
+def generate_weight_vectors():
+    """Generate weight vectors for scalarization in MOEA/D."""
+    weights = []
+    for i in range(NS):
+        w1 = i / (NS - 1)
+        weights.append([w1, 1 - w1])
+    return weights
+
+def find_neighbors(weights):
+    """Find neighbors for each weight vector based on Euclidean distance."""
+    neighbors = []
+    for i in range(NS):
+        dis = [np.linalg.norm(np.array(weights[i]) - np.array(weights[j])) for j in range(NS)]
+        neighbor_indices = sorted(range(len(dis)), key=lambda x: dis[x])[:NUM_NEIGHBORS]
+        neighbors.append(neighbor_indices)
+    return neighbors
+def scalarize(objectives, weights):
+    """Weighted sum scalarization for MOEA/D."""
+    return sum(w * obj for w, obj in zip(weights, objectives))   
+
+
+def genetic_algorithm_operator(tour):
+    """Apply crossover and mutation to generate new tours."""
+    # Mutation: Swap two cities in the tour
+    if random.random() < MUTATION_RATE:
+        i, j = random.sample(range(NUM_CITIES), 2)
+        tour[i], tour[j] = tour[j], tour[i]
+    return tour 
+
+def pso_operation(tem1,tem2):
+    tem3=[Path()]
+    ob1=0.0
+    ob2=0.0
+    d1 = path_diff(tem1, tem2)
+    tem3= swap(tem1,d1)
+    return tem3
+    
+    
+def swap(p, ss):
+    t1 = deepcopy(p)
+    for i in range(ss.n):
+        t1[ss.ss[i][0]], t1[ss.ss[i][1]] = t1[ss.ss[i][1]], t1[ss.ss[i][0]]
+        
+    return t1    
+   
+def path_diff(p1, p2):
+    #input("wait in path diff")
+    x, y = p1, p2
+    d = SwapSequence()
+    for i in range(NN):
+        j = y.index(x[i])
+        if i != j:
+            d.ss[d.n] = [i, j]
+            y[i], y[j] = y[j], y[i]
+            d.n += 1
+    #print(f"{d.ss[0][1]} and {d.n}")
+    #input(" wait in sss")
+    return d       
+
+##### ####                   STARTIN MAIN PROGRAM     #########################
+###################### ################################
+####### Read DATA######################
+
+## DM is distance matrix generated from coordinate point #####################
+
+DM=eqdist(x,y)
+for i in range(NPP):
+    for j in range(NPP):
+        c[i][j]=DM[i][j]
+DM1=eqdist(mx,my)
+for i in range(NPP):
+    for j in range(NPP):
+        cc[i][j]=DM1[i][j]
+               
+        
+        
+        
+#read_data()
+global_best[0].cost=99999
+
+f = open('p_cost_file.txt','r')
+Lines = f.read()
+pro_cost_pc = Lines.split()
+pro_cost_pc[:] = list(map(int, pro_cost_pc))
+
+# read available product  in each node(market)
+print("Perches cost of each product in each market",pro_cost_pc)
+#pur_cst_of_p[:] = list(map(int, pur_cst_of_p))  
+
+f = open('avl_file.txt','r')
+Lines = f.read()
+av_pro_pc = Lines.split()
+av_pro_pc[:] = list(map(int, av_pro_pc))
+
+
+
+print("Avaialbe of product in each market",av_pro_pc)
+s_av=sum(av_pro_pc)
+print("total avaiable product ia", s_av)   
+
+dem= int(input('Please say the total demand: '))
+  ### Total demand
+if dem>sum(av_pro_pc):
+    input("Your demand is grater than available product")
+    input("Please eneter a valide demand")
+
+
+
+
+   
+for itr in range(cl_loop):
+    nod = np.zeros(len(z), dtype=int)
+
+    # Randomly create centers
+    center = [random.randint(0, len(z)-1) for i in range(cl)]
+
+    # Assign initial centers to clusters
+    for i in range(cl):
+        cluster[i].cx = x[center[i]]
+        cluster[i].cy = y[center[i]]
+        
+    #applying K-mean clustering algorithm for creating cluster   
+    k_means()
+
+    for i in range(0, cl):
+        pc=0
+         #print("length is ", cluster[i].lenth)
+        
+        for j in range(0, cluster[i].lenth):
+            tem=(cluster[i].s[j])
+            pc=pc+av_pro_pc[tem]
+        cluster[i].av_pro=pc
+       
+    for it2 in range(gl_loop):  
+        
+        NN=0
+        all_cost=0
+        #print("in iteration\n ",it2)
+        check=0
+        while check!=1:
+            ## randomly demand distributation per cluster wise
+            j = 0
+            A1 = [0]*cl
+            for i in range(cl):
+                A1[i] = random.uniform(0,1)
+                j = j + A1[i]
+            
+            for i in range(cl):
+                cluster[i].demand = round((A1[i]/j)*dem)   #### D[i]  stores the actual total demands of each cluster
+               # print(cluster[i].demand,'\t', end="")
+            tem=[0]*cl
+            tem1=[0]*cl
+            tem2=[0]*cl
+            t_avl=[0]*cl
+            for i in range(cl):
+                tem[i]=cluster[i].demand
+                tem1[i]=cluster[i].av_pro
+                tem2.append(tem1)
+            tem.sort()
+            lock=[]
+            for i in range(0,cl):
+                loc = tem1.index(min(tem1))
+               
+                data=tem1[loc]
+                #print("data",data)
+                if tem[i] > data:
+                    check=0
+                    
+                else:
+                    check=1
+                    for j in range(cl):
+                        if data == cluster[j].av_pro:
+                            lock.append(j)
+                            break 
+                    tem1.pop(loc)
+
+        
+        ne=[0]*cl
+        #print("\n cluster wise deman corresponsing to available")
+        for i in range(cl):
+            cluster[lock[i]].demand=tem[i]
+            
+        element_cost=0
+        
+        #Output the clusters
+        for i in range(0, cl):
+             
+             create1_path(i)
+             vn=0
+             qn=0
+             
+             #cluster[i].path = sorted(cluster[i].path, key=lambda node: pro_cost_pc[node])
+             for j in range(cluster[i].path_length-1):
+                 vn+= av_pro_pc[cluster[i].path[j]]*pro_cost_pc[cluster[i].path[j]]
+                 qn+=av_pro_pc[cluster[i].path[j]]
+             qn=cluster[i].demand-qn
+             vn+=qn*pro_cost_pc[cluster[i].path[cluster[i].path_length-1]]
+             cluster[i].path_cost=vn
+             #print("total parches cost",cluster[i].path_cost)
+             element_cost+=vn
+        for i in range(cl):
+            NN+=cluster[i].path_length
+       
+          
+        path3=cluster[0].path ## total no of node for TSP
+        for i in range(1,cl):
+            path3 += cluster[i].path
+        
+        plt_cluster()  
+        
+        initialize()
+        print("intial best solution")
+        result()
+        pareto_front = find_pareto_front(solutions)
+        TPF.NDPF.extend(pareto_front)
+        #TPF.NDPF.append(list(set(pareto_front)))
+        print("Pareto front (non-dominated solutions):", pareto_front)
+        print("True PF (non-dominated solutions):", TPF.NDPF)
+        input("hold")
+        pf_plt()
+        weights = generate_weight_vectors()
+        #print("weight are",  weights)
+        neighbors = find_neighbors(weights)
+        print("neighbors are for solution",neighbors)
+        ideal_point = [min([objs[i] for objs in solutions ]) for i in range(NUM_OBJECTIVES)]
+        print("best solution of each objective are", ideal_point)
+        for generation in range(MAX_IT):
+            tem5=[Path()]
+            for ii in range(NS):
+                sol1=[NN]*0
+                sol2=[NN]*0
+                sol3=[NN]*0
+                # Step 2.1: Neighbor selection
+                neighborhood = neighbors[ii]
+                # Step 2.2: Generate new solution using genetic operator
+                num1,num2 = random.sample(neighborhood, 2)
+                sol1=p[num1].x
+                sol2=p[num2].x              
+                tem5=pso_operation(sol1,sol2)
+                btt=cost(tem5)
+                solutions2.append(btt)
+                for jkk in neighborhood:
+                
+                    bt=p[jkk].cost
+                    solutions1.append(bt)
+                    if(dominates(solutions2,solutions1)):
+                        p[jkk].x =tem5
+                        p[jkk].cost=cost(p[jkk].x)
+                    else:
+                        if(dominates(solutions1,solutions2)):
+                            pass
+                        else:
+                            
+                            TPF.NDPF.extend(solutions2)
+               
+             #is_dominated
+            #print("true pf are",TPF.NDPF)
+            solutions[:]=[]
+            for pk in range(NS):
+                solutions.append(p[pk].cost)
+            #result()
+            merged_list=[]
+            #print(" current solution",solutions)
+            merged_list = list(chain(TPF.NDPF, solutions))
+            # print(" after marge two list is",merged_list)
+            pareto_front[:]=[]
+            pareto_front = find_pareto_front(merged_list)
+            TPF.NDPF[:]=[]
+            TPF.NDPF.extend(pareto_front)
+            #print("Pareto front (non-dominated solutions):", pareto_front)
+            unique_list = []
+            for item in TPF.NDPF:
+                if item not in unique_list:
+                    unique_list.append(item)
+            #input("hold,watch")
+            #print(unique_list)
+            TPF.NDPF[:]=[]
+            TPF.NDPF=unique_list
+            #print("Pareto front (non-dominated solutions):",TPF.NDPF )
+            #input("next iteraion working")
+            print(generation,"generation is complete")
+        pf_plt1()
+        
+            
+           
+       
+
+
+########################################################
+          
+    
+
+
+
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
